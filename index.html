@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vaca 3D · Anatomía de cabeza, cuello y tórax</title>
+  <meta name="description" content="Atlas 3D interactivo para estudiar la Práctica 9 de rumiantes: cabeza, cuello, dorso y tórax del vacuno." />
+  <script>
+    // tema antes del primer pintado (sin parpadeo): URL ?theme= > guardado > sistema
+    (() => {
+      const q = new URLSearchParams(location.search).get('theme');
+      const t = q || localStorage.getItem('vaca3d.theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%23ff4d6d'/></svg>" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="Modelo 3D de la vaca. Arrastra para girar, rueda para acercar, clic para seleccionar."></canvas>
+    <div id="labels" aria-hidden="true"></div>
+
+    <header class="topbar glass">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <h1>Vaca 3D</h1>
+          <p>Práctica 9 · Cabeza, cuello, dorso y tórax</p>
+        </div>
+      </div>
+      <nav class="views" id="views" aria-label="Vistas"></nav>
+      <div class="actions">
+        <button class="btn ghost" id="btnQuiz" title="Modo examen (Q)">Examen</button>
+        <button class="btn icon ghost" id="btnTheme" title="Modo oscuro (D)" aria-label="Cambiar a modo oscuro" aria-pressed="false">
+          <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20.7 14.6A8.5 8.5 0 0 1 9.4 3.3a8.5 8.5 0 1 0 11.3 11.3Z"/></svg>
+          <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></svg>
+        </button>
+        <button class="btn icon ghost" id="btnHelp" title="Ayuda (?)" aria-label="Ayuda">?</button>
+      </div>
+    </header>
+
+    <aside class="sidebar glass" id="sidebar">
+      <div class="search">
+        <input id="search" type="search" placeholder="Buscar estructura…  ( / )" autocomplete="off" aria-label="Buscar estructura" />
+      </div>
+      <div class="progress" id="progress"></div>
+      <div class="tree" id="tree" role="tree"></div>
+    </aside>
+
+    <section class="tools glass" id="tools" aria-label="Capas y herramientas">
+      <div class="tool-title">Capas</div>
+      <div class="chips" id="layers"></div>
+      <div class="tool-row">
+        <label for="skin">Piel</label>
+        <input type="range" id="skin" min="0" max="0.6" step="0.01" value="0.16" />
+      </div>
+      <div class="tool-title">Cortes</div>
+      <div class="seg" id="clipMode">
+        <button data-clip="none" class="on">Ninguno</button>
+        <button data-clip="sag">Mediano</button>
+        <button data-clip="tr">Transversal</button>
+        <button data-clip="dor">Dorsal</button>
+      </div>
+      <div class="tool-row" id="clipRow" hidden>
+        <input type="range" id="clipPos" min="-1" max="1" step="0.002" value="0" aria-label="Posición del corte" />
+        <button class="btn icon ghost sm" id="clipFlip" title="Invertir lado" aria-label="Invertir lado del corte">⇄</button>
+      </div>
+      <div class="tool-row toggles">
+        <label class="switch"><input type="checkbox" id="pins" /> <span>Números de figura</span></label>
+        <label class="switch"><input type="checkbox" id="isolate" /> <span>Aislar selección</span></label>
+      </div>
+    </section>
+
+    <article class="card glass" id="card" hidden aria-live="polite">
+      <button class="close" id="cardClose" aria-label="Cerrar ficha">×</button>
+      <div class="card-layer" id="cardLayer"></div>
+      <h2 id="cardTitle"></h2>
+      <div class="card-refs" id="cardRefs"></div>
+      <p id="cardDesc"></p>
+      <div class="card-actions">
+        <button class="btn sm" id="cardFocus">Centrar</button>
+        <button class="btn sm ghost" id="cardIsolate">Aislar</button>
+      </div>
+    </article>
+
+    <div class="quiz glass" id="quiz" hidden>
+      <div class="quiz-head">
+        <div class="seg" id="quizMode">
+          <button data-q="id" class="on">Identifica</button>
+          <button data-q="find">Localiza</button>
+        </div>
+        <select id="quizScope" aria-label="Temario del examen"></select>
+        <div class="score" id="quizScore">0 / 0</div>
+        <button class="close" id="quizClose" aria-label="Salir del examen">×</button>
+      </div>
+      <div class="quiz-q" id="quizQ"></div>
+      <div class="quiz-opts" id="quizOpts"></div>
+      <div class="quiz-foot">
+        <span id="quizFeedback"></span>
+        <button class="btn sm" id="quizNext">Siguiente →</button>
+      </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" hidden></div>
+    <div class="help glass" id="help" hidden>
+      <h3>Cómo estudiar</h3>
+      <ul>
+        <li><b>Arrastrar</b> gira · <b>rueda</b> acerca · <b>clic derecho</b> desplaza.</li>
+        <li><b>Clic</b> en una estructura: ficha con su número y sección.</li>
+        <li><b>Números de figura</b>: muestra los números del PDF de la sección abierta.</li>
+        <li><b>Cortes</b>: mediano para la cabeza (9.3), transversal para cuello (9.4.B) y tórax (9.6.C).</li>
+        <li><b>Examen</b>: identifica o localiza estructuras del temario elegido.</li>
+        <li>Atajos: <kbd>/</kbd> buscar · <kbd>Esc</kbd> limpiar · <kbd>F</kbd> centrar · <kbd>Q</kbd> examen · <kbd>D</kbd> modo oscuro.</li>
+      </ul>
+      <p class="muted">Modelo procedural esquemático, orientado a la topografía de los apuntes. Contrasta siempre con el atlas.</p>
+      <button class="btn sm" id="helpClose">Entendido</button>
+    </div>
+    <div class="loader" id="loader"><div class="spinner"></div><span>Construyendo la vaca…</span></div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
