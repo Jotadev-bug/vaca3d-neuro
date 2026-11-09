@@ -12,13 +12,15 @@ import * as head from './model/head.js';
 import * as neck from './model/neck.js';
 import * as thorax from './model/thorax.js';
 import * as body from './model/body.js';
+import * as abdomen from './model/abdomen.js';
+import { THORACIC, LUMBAR } from './frame.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const SHOT = params.has('shot');
 
 // ── construir modelo ──
-const MODULES = { head, neck, thorax, body };
+const MODULES = { head, neck, thorax, body, abdomen };
 const only = params.get('solo')?.split(',');
 for (const [name, mod] of Object.entries(MODULES)) {
   if (only && !only.includes(name)) continue;
@@ -82,22 +84,75 @@ const VIEWS = {
   corazon: { label: 'Corazón', target: [0.0, 0.88, 0], dir: [0.35, 0.15, 1], span: [0.85, 0.75], layers: ['vaso', 'nervio', 'linfa', 'viscera', 'glandula'], hide: ['pulmon_', 'borde_basal_pulmon', 'reticulo'] },
   dorso: { label: 'Dorso y cola', target: [-1.25, 1.0, 0], dir: [0.1, 0.55, 1], span: [2.1, 1.4] },
 };
+for (const v of Object.values(VIEWS)) { v.p = 9; v.hide ??= ['reg_']; }
+// ── Práctica 10 · abdomen ──
+// hide = prefijos de refs ocultas; hideLayers = capas apagadas (por defecto la pared abdominal)
+const NOT_STOMACH = ['om_', 'pa_', 'reg_', 'duodeno', 'yeyuno', 'ileon', 'ciego', 'colon', 'recto', 'pancreas', 'mesenterio', 'nnll_yey', 'higado', 'vesicula', 'bazo', 'rinon', 'v_porta', 'v_cava', 'aorta_abd', 'pliegue_ileo', 'n_', 'ultima', 'tuberosidad', 'esofago'];
+const ABD_ONLY = { owners: ['abdomen'], hideLayers: ['pared', 'nervio', 'proyeccion'] };
+const corte = (label, x) => ({ label, target: [x, 0.92, 0], dir: [-1, 0.06, 0.02], span: [0.95, 0.85], clip: 'tr', clipPos: x, flip: true, hide: ['reg_'], skin: 0.12 });
+Object.assign(VIEWS, {
+  abd_izq: { p: 10, label: 'Abdomen izq.', target: [-0.88, 0.88, 0], dir: [0, 0.1, 1], span: [1.45, 0.95], hide: ['reg_', 'om_mayor_sup'], skin: 0.1 },
+  abd_dcho: { p: 10, label: 'Abdomen dcho.', target: [-0.88, 0.88, 0], dir: [0, 0.1, -1], span: [1.45, 0.95], hide: ['reg_'], skin: 0.1 },
+  abd_omentos: { p: 10, label: 'Omentos', target: [-0.95, 0.85, 0], dir: [-0.15, 0.05, -1], span: [1.25, 0.85], hide: ['reg_'], skin: 0.06 },
+  // regiones limpias: piel + huesos + manchas; el resto se puede encender en Capas
+  regiones: { p: 10, label: 'Regiones', target: [-0.85, 0.9, 0], dir: [0, 0.12, 1], span: [1.9, 1.15], hideLayers: ['pared', 'viscera', 'vaso', 'nervio', 'linfa', 'omento', 'musculo', 'glandula', 'cavidad', 'seno'], skin: 0.35 },
+  pared: { p: 10, label: 'Pared', target: [-0.95, 0.86, 0], dir: [-0.35, 0.05, 1], span: [1.45, 1.0], hideLayers: [], hide: ['reg_'], skin: 0.0 },
+  estomago_izq: { p: 10, label: 'Estómago izq.', target: [-0.88, 0.86, 0.04], dir: [0.1, 0.18, 1], span: [1.2, 0.75], ...ABD_ONLY, hide: NOT_STOMACH },
+  estomago_dcho: { p: 10, label: 'Estómago dcho.', target: [-0.82, 0.84, -0.02], dir: [-0.05, 0.18, -1], span: [1.2, 0.75], ...ABD_ONLY, hide: NOT_STOMACH },
+  interior: { p: 10, label: 'Interior', target: [-0.86, 0.86, 0.05], dir: [0.05, 0.12, 1], span: [0.95, 0.6], ...ABD_ONLY, hide: NOT_STOMACH, clip: 'sag', clipPos: 0.12 },
+  corte_t10: corte('Corte T10', THORACIC[9].x),
+  corte_t13: corte('Corte T13', THORACIC[12].x),
+  corte_l3: corte('Corte L3', LUMBAR[2].x),
+  corte_l5: corte('Corte L5', LUMBAR[4].x),
+  corte_horizontal: { p: 10, label: 'Horizontal', target: [-0.85, 0.86, 0], dir: [0, 1, 0.06], span: [1.5, 0.9], clip: 'dor', clipPos: 0.86, hide: ['reg_'], skin: 0.1 },
+  paramediano: { p: 10, label: 'Paramediano', target: [-0.45, 0.85, 0], dir: [0, 0.05, 1], span: [1.1, 0.75], clip: 'sag', clipPos: 0.06, hide: ['reg_'], skin: 0.1 },
+  visceras: { p: 10, label: 'Vísceras', target: [-0.92, 0.95, -0.15], dir: [0, 0.15, -1], span: [1.2, 0.7], owners: ['abdomen'], hideLayers: ['pared', 'nervio', 'proyeccion', 'omento'], hide: ['rumen', 'reticulo', 'surco', 'omaso', 'abomaso', 'orificio', 'insula', 'pliegue_rum', 'om_', 'pa_', 'reg_', 'torus', 'esofago', 'tuberosidad', 'ultima'] },
+});
+for (const id of ['corte_t10', 'corte_t13', 'corte_l3', 'corte_l5']) VIEWS[id].p = 10;
+// en P10 se ocultan las proyecciones torácicas de la P9 (áreas pulmonar/cardíaca, focos)
+const P9_PROJ = ['proy_', 'lim_', 'aus_', 'area_', 'linea_receso', 'epidural'];
+for (const v of Object.values(VIEWS)) if (v.p === 10) v.hide = [...(v.hide || []), ...P9_PROJ];
+// las vistas laterales del abdomen no necesitan los pulmones tapando retículo, hígado y bazo
+for (const id of ['abd_izq', 'abd_dcho', 'abd_omentos', 'paramediano']) VIEWS[id].hide.push('pulmon_', 'borde_basal_pulmon');
 const viewPose = (v) => {
   const t = new THREE.Vector3(...v.target);
   const p = t.clone().add(new THREE.Vector3(...v.dir).normalize().multiplyScalar(fitDistance(v.span)));
   return [p, t];
 };
 const viewsEl = $('views');
+// selector de práctica: muestra los botones de vistas de la 9 o de la 10
+const ptab = el('div', 'ptab');
+ptab.innerHTML = '<button data-p="9">P9</button><button data-p="10">P10</button>';
+viewsEl.appendChild(ptab);
+let practice = 10;
+function showPractice(p) {
+  practice = p;
+  ptab.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.p === p));
+  viewsEl.querySelectorAll('button[data-view]').forEach((b) => { b.hidden = VIEWS[b.dataset.view].p !== p; });
+}
+ptab.onclick = (e) => { const p = e.target.dataset?.p; if (p) { showPractice(+p); viewsEl.scrollLeft = 0; } };
+// rueda vertical → desplazamiento horizontal de la barra de vistas
+viewsEl.addEventListener('wheel', (e) => {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && viewsEl.scrollWidth > viewsEl.clientWidth) { viewsEl.scrollLeft += e.deltaY; e.preventDefault(); }
+}, { passive: false });
 for (const [id, v] of Object.entries(VIEWS)) {
   const b = document.createElement('button'); b.textContent = v.label; b.dataset.view = id;
   b.onclick = () => goView(id); viewsEl.appendChild(b);
 }
+showPractice(practice);
 function goView(id, instant = false) {
   const v = VIEWS[id]; if (!v) return;
-  viewsEl.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.view === id));
+  if (v.p !== practice) showPractice(v.p);
+  viewsEl.querySelectorAll('button[data-view]').forEach((b) => {
+    const on = b.dataset.view === id;
+    b.classList.toggle('on', on);
+    if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
   sel.hidePrefix = v.hide || [];
   sel.owners = v.owners || null;
-  setLayers(v.layers || null);
+  const off = v.hideLayers ?? ['pared'];
+  setLayers(v.layers || Object.keys(LAYERS).filter((l) => !off.includes(l)));
+  clip.flip = !!v.flip;
   applyClipUI(v.clip || 'none', v.clipPos);
   const [p, t] = viewPose(v);
   const sk = v.skin ?? 0.16; $('skin').value = sk; setSkinOpacity(sk);
@@ -236,6 +291,8 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerleave', () => { tooltip.hidden = true; });
 
 // ── examen ──
+// opacidad del resto del modelo durante el examen: casi invisible, pero deja intuir la silueta
+const QUIZ_GHOST = 0.022;
 const quiz = { active: false, mode: 'id', scope: 'all', target: null, ok: 0, total: 0, answered: false };
 const scopeEl = $('quizScope');
 scopeEl.innerHTML = `<option value="all">Todo el temario</option>` + SECTIONS.flatMap((s) => s.subs.map((u) => `<option value="${u.id}">${u.id} · ${u.title}</option>`)).join('');
@@ -250,7 +307,8 @@ function quizNext() {
   const opts = $('quizOpts'); opts.innerHTML = '';
   if (quiz.mode === 'id') {
     $('quizQ').innerHTML = '¿Qué estructura está resaltada?';
-    sel.refs = new Set(expand(quiz.target)); sel.isolate = false; applyVisibility(); frameRefs(sel.refs, { pad: 3.2 });
+    // el resto se vuelve casi invisible: solo destaca la pieza preguntada
+    sel.refs = new Set(expand(quiz.target)); sel.isolate = true; sel.ghost = QUIZ_GHOST; applyVisibility(); frameRefs(sel.refs, { pad: 3.2 });
     const wrong = shuffle(pool.filter((r) => r !== quiz.target && NAME[r] !== NAME[quiz.target])).slice(0, 3);
     for (const r of shuffle([quiz.target, ...wrong])) {
       const b = el('button', 'opt'); b.textContent = NAME[r];
@@ -258,7 +316,8 @@ function quizNext() {
       opts.appendChild(b);
     }
   } else {
-    sel.refs = new Set(); applyVisibility();
+    // «Encuéntrala»: hay que ver todo para poder hacer clic
+    sel.refs = new Set(); sel.isolate = false; applyVisibility();
     $('quizQ').innerHTML = `Haz clic en: <b>${NAME[quiz.target]}</b>`;
   }
 }
@@ -270,7 +329,7 @@ function answer(ok, btn) {
   $('quizFeedback').className = ok ? 'good' : 'bad';
   if (btn) btn.classList.add(ok ? 'good' : 'bad');
   $('quizOpts').querySelectorAll('.opt').forEach((b) => { if (b.textContent === NAME[quiz.target]) b.classList.add('good'); });
-  if (quiz.mode === 'find') { sel.refs = new Set(expand(quiz.target)); applyVisibility(); frameRefs(sel.refs, { pad: 3 }); }
+  if (quiz.mode === 'find') { sel.refs = new Set(expand(quiz.target)); sel.isolate = true; sel.ghost = QUIZ_GHOST; applyVisibility(); frameRefs(sel.refs, { pad: 3 }); }
   if (ok) markSeen(quiz.target);
 }
 function quizClick(h) {
@@ -283,7 +342,8 @@ const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { co
 function toggleQuiz(on = !quiz.active) {
   quiz.active = on; $('quiz').hidden = !on; card.hidden = true;
   document.body.classList.toggle('quizzing', on);
-  if (on) { if (openSub && quiz.scope === 'all') { scopeEl.value = openSub; quiz.scope = openSub; } quizNext(); } else clearSel();
+  if (on) { if (openSub && quiz.scope === 'all') { scopeEl.value = openSub; quiz.scope = openSub; } quizNext(); }
+  else { sel.isolate = $('isolate').checked; sel.ghost = null; clearSel(); }    // vuelve el aislado del usuario
 }
 $('btnQuiz').onclick = () => toggleQuiz();
 $('quizClose').onclick = () => toggleQuiz(false);
@@ -325,12 +385,13 @@ window.addEventListener('keydown', (e) => {
 // ── inicio ──
 buildTree(); renderProgress();
 start();
-goView(params.get('view') || 'completo', true);
+goView(params.get('view') || 'abd_izq', true);
 if (params.get('layers')) setLayers(params.get('layers').split(','));
 if (params.get('skin')) { $('skin').value = params.get('skin'); setSkinOpacity(parseFloat(params.get('skin'))); }
 if (params.get('clip')) { const [m, p] = params.get('clip').split(':'); applyClipUI(m, p !== undefined ? parseFloat(p) : undefined); if (params.has('flip')) setClip(clip.mode, clip.pos, true); }
 if (params.get('cam')) camera.position.set(...params.get('cam').split(',').map(Number));
 if (params.get('target')) controls.target.set(...params.get('target').split(',').map(Number));
+if (params.has('quiz')) toggleQuiz(true);                 // ?quiz=1 abre el examen (pruebas y enlaces)
 if (params.get('sel')) choose(params.get('sel'), {}, { focus: !params.get('cam') });
 if (params.get('pins')) { const sub = SECTIONS.flatMap((s) => s.subs).find((s) => s.id === params.get('pins')); if (sub) { currentSub = sub; $('pins').checked = true; showPins(); } }
 if (SHOT && params.get('ui') === '0') document.body.classList.add('noui');

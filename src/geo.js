@@ -18,6 +18,8 @@ export const LAYERS = {
   seno:       { label: 'Senos',       color: '#5ab4e6' },
   cavidad:    { label: 'Cavidades',   color: '#e88a8a' },
   viscera:    { label: 'Vísceras',    color: '#a8323c' },
+  pared:      { label: 'Pared abdominal', color: '#c98a6b' },
+  omento:     { label: 'Omentos',     color: '#e9cf7a' },
   proyeccion: { label: 'Proyecciones',color: '#ff4d6d' },
 };
 

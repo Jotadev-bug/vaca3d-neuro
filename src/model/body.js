@@ -335,10 +335,14 @@ function buildTail() {
   place('arcos_hemales', arcs, 'hueso');
 
   // A. y v. caudal mediana (ventral, entre los arcos hemales a lo largo de la cola)
-  const vesselPts = CAUDAL.map((p) => V(p.x, p.y - 0.04 - 0.01 * Math.min(1, 0), 0));
-  const vPts = CAUDAL.map((p) => V(p.x, p.y - 0.048, 0.006));
-  const aPts = CAUDAL.map((p) => V(p.x, p.y - 0.044, -0.006));
-  void vesselPts;
+  // cara ventral de la cola: perpendicular a la tangente (al colgar mira en sentido craneal)
+  const ventral = (i) => {
+    const a = CAUDAL[Math.max(0, i - 1)], b = CAUDAL[Math.min(CAUDAL.length - 1, i + 1)];
+    const t = b.clone().sub(a).normalize();
+    return V(-t.y, t.x, 0);
+  };
+  const vPts = CAUDAL.map((p, i) => V(p.x, p.y, 0.006).addScaledVector(ventral(i), 0.040 * (1 - 0.7 * i / 19)));
+  const aPts = CAUDAL.map((p, i) => V(p.x, p.y, -0.006).addScaledVector(ventral(i), 0.036 * (1 - 0.7 * i / 19)));
   place('a_caudal_mediana', tube(aPts, (t) => lerp(0.006, 0.002, t), 'artery', { radial: 8 }), 'vaso');
   place('v_caudal_mediana', tube(vPts, (t) => lerp(0.007, 0.0025, t), 'vein', { radial: 8 }), 'vaso');
 }
