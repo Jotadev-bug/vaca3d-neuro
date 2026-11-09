@@ -128,7 +128,8 @@ export function setClip(mode, pos = clip.pos, flip = clip.flip) {
 // ── selección / visibilidad ──
 // hidePrefix: refs ocultas por la vista actual (p. ej. pulmones en «Corazón»)
 // owners: si no es null, solo se ven las mallas de esos módulos (p. ej. «Corte cabeza»)
-export const sel = { refs: new Set(), isolate: false, quizHide: false, hidePrefix: [], owners: null };
+// ghost: opacidad del resto al aislar (null → 0.06; el examen usa menos)
+export const sel = { refs: new Set(), isolate: false, ghost: null, quizHide: false, hidePrefix: [], owners: null };
 export function selectedMeshes() {
   const out = [];
   for (const r of sel.refs) for (const o of registry.get(r) || []) o.traverse((m) => m.isMesh && out.push(m));
@@ -146,7 +147,12 @@ export function applyVisibility() {
     const mat = m.material;
     const baseO = m.userData.layer === 'piel' && mat.userData.baseTransparent ? skinOpacity * skinK : mat.userData.baseOpacity;
     let o = baseO, tr = mat.userData.baseTransparent;
-    if (sel.isolate && selSet.size && !isSel) { o = Math.min(baseO, 0.06); tr = true; }
+    if (sel.isolate && selSet.size && !isSel) {
+      o = Math.min(baseO, sel.ghost ?? 0.06); tr = true;
+      // modo examen: solo piel y huesos quedan como silueta; el resto se oculta (si no, las capas se suman)
+      if (sel.ghost != null && m.userData.layer !== 'piel' && m.userData.layer !== 'hueso') m.visible = false;
+      if (sel.ghost != null && m.userData.layer === 'piel') o = sel.ghost * 0.3;     // la piel tiene varias capas: más tenue
+    }
     if (m.userData.layer === 'piel' && mat.userData.baseTransparent && skinOpacity <= 0.001 && !isSel) m.visible = false;
     mat.opacity = o; mat.transparent = tr;
     mat.depthWrite = tr ? (o > 0.5 && mat.userData.baseTransparent === false) : true;

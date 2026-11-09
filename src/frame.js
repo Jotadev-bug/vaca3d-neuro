@@ -31,7 +31,8 @@ export const CAUDAL = Array.from({ length: 20 }, (_, i) => {
   for (let k = 0; k < i; k++) {
     const tk = k / 19; const a = -0.25 - 1.15 * Math.min(1, tk * 1.6);
     const len = 0.052 - 0.012 * tk;
-    x += Math.cos(a) * len; y += Math.sin(a) * len;
+    // +X es craneal: la cola avanza hacia −X (caudal) y cae; antes sumaba y se metía en el vientre
+    x -= Math.cos(a) * len; y += Math.sin(a) * len;
   }
   void ang; return V(x, y);
 });

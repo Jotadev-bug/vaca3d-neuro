@@ -53,7 +53,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .brand .dot { width: 26px; height: 26px; border-radius: 9px; background: conic-gradient(from 200deg, #ff2d55, #ff8a4c, #f2c94c, #6cc08a, #4fb0ec, #8b5cf6, #ff2d55); box-shadow: 0 4px 14px -4px rgba(255,45,85,.6); }
 .brand h1 { font-size: 15px; margin: 0; letter-spacing: -0.01em; font-weight: 700; }
 .brand p { font-size: 12px; margin: 1px 0 0; color: var(--ink2); }
-.views { display: flex; gap: 4px; flex: 1; justify-content: center; overflow-x: auto; scrollbar-width: none; }
+/* centrado "seguro": si no cabe, se desplaza desde el inicio (justify-content:center cortaba el principio) */
+.views { display: flex; gap: 4px; flex: 1; min-width: 0; align-items: center; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.views::-webkit-scrollbar { display: none; }
+.views > :first-child { margin-left: auto; }
+.views > :last-child { margin-right: auto; padding-right: 22px; }
 .views button { border: 0; background: transparent; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--ink2); white-space: nowrap; transition: .15s; }
 .views button:hover { background: rgba(var(--tint),.05); color: var(--ink); }
 .views button.on { background: var(--ink); color: var(--on-ink); }
@@ -174,3 +179,9 @@ body.noui .topbar, body.noui .sidebar, body.noui .tools, body.noui .card, body.n
   .brand { min-width: 0; } .brand p { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* selector de práctica en la barra de vistas */
+.views .ptab { display: flex; gap: 2px; padding: 2px; margin-right: 6px; border-radius: 11px; background: var(--surface-2, rgba(var(--tint),.06)); flex: none;
+  position: sticky; left: 0; z-index: 1; box-shadow: 6px 0 10px -6px rgba(0,0,0,.18); }
+.views .ptab button { padding: 6px 9px; font-weight: 700; font-size: 12px; }
+.views button[hidden] { display: none; }

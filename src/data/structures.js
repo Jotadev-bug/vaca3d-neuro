@@ -1,3 +1,4 @@
+import { ABD_SECTIONS, ABD_ALIASES, ABD_INFO } from './abdomen.js';
 // ─────────────────────────────────────────────────────────────
 // Catálogo de estudio · Práctica 9 (Rumiantes): cabeza, cuello, dorso y tórax
 // Fuente: NeuroApuntes.pdf (págs. 137-149). Números = numeración de las figuras.
@@ -899,6 +900,11 @@ export const INFO = {
   aus_mitral: ['body', 'Foco mitral: 5.º EIC izq, ventral.'],
   aus_tricuspide: ['body', 'Foco tricúspide: 3.º-4.º EIC derecho, ventral.'],
 };
+
+// Práctica 10 · Abdomen
+SECTIONS.push(...ABD_SECTIONS);
+Object.assign(ALIASES, ABD_ALIASES);
+Object.assign(INFO, ABD_INFO);
 
 /** Utilidad: lista plana de entradas para búsqueda/quiz */
 export function flatItems() {

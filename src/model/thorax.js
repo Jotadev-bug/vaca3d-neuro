@@ -58,6 +58,8 @@ function diaphragmSurfaceX(y, z) {
   return dome.x + back + lateral;        // x craneal-límite del pulmón
 }
 
+const ABDOMEN_OWNS_VISCERA = true;
+
 const COLORS = {
   lungL: '#f3abb1', lungR: '#f0a6ad',
 };
@@ -134,7 +136,8 @@ export function build() {
   // 1 · DIAFRAGMA + vísceras abdominales craneales
   // ============================================================
   buildDiaphragm();
-  buildAbdominalContext();
+  // hígado y retículo: ahora los modela el módulo abdomen (Práctica 10) con detalle
+  if (!ABDOMEN_OWNS_VISCERA) buildAbdominalContext();
 
   // ============================================================
   // 2 · AIRWAYS (tráquea torácica, bifurcación, bronquios)
