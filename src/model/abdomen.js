@@ -536,11 +536,12 @@ function buildIntestines() {
   place('colon_asa_distal', T([[Cs.x - 0.115, Cs.y, Cs.z], [-1.28, 0.93, -0.14], [-1.22, 0.985, -0.13], [-1.08, 0.975, -0.135], [-0.96, 0.99, -0.12], [-0.90, 1.05, -0.09]], 0.018, C.colon, du), 'viscera');
   place('colon_transverso', T([[-0.90, 1.05, -0.09], [-0.87, 1.09, -0.05], [-0.90, 1.11, -0.02]], 0.018, C.colon, du), 'viscera');
   place('colon_descendente', T([[-0.90, 1.11, -0.02], [-1.10, 1.115, -0.02], [-1.30, 1.12, -0.02], [-1.45, 1.11, -0.01]], 0.019, C.colon, du), 'viscera');
-  place('recto', T([[-1.45, 1.11, -0.01], [-1.60, 1.09, 0], [-1.72, 1.065, 0], [-1.84, 1.04, 0]], (t) => 0.024 + 0.012 * Math.sin(Math.PI * Math.min(1, t * 1.2)), C.rectum, { ...du, mat: { transparent: true, opacity: 0.55, depthWrite: false } }), 'viscera');
+  // recto abdominal (la porción pelviana, ampolla y conducto anal son de la P11)
+  place('recto', T([[-1.45, 1.11, -0.01], [-1.52, 1.10, -0.004], [-1.585, 1.093, 0]], 0.026, C.rectum, { ...du, mat: { transparent: true, opacity: 0.55, depthWrite: false } }), 'viscera');
   {
     const g = new THREE.Group();
-    const rc = new THREE.CatmullRomCurve3([V(-1.45, 1.11, -0.01), V(-1.60, 1.09, 0), V(-1.72, 1.065, 0), V(-1.84, 1.04, 0)]);
-    for (const u of [0.3, 0.48, 0.66, 0.82]) g.add(ring(rc.getPointAt(u), rc.getTangentAt(u), 0.026, 0.005, 'stomach', '#b97a6c'));
+    const rc = new THREE.CatmullRomCurve3([V(-1.45, 1.11, -0.01), V(-1.52, 1.10, -0.004), V(-1.585, 1.093, 0)]);
+    for (const u of [0.35, 0.75]) g.add(ring(rc.getPointAt(u), rc.getTangentAt(u), 0.026, 0.005, 'stomach', '#b97a6c'));
     place('recto_pliegues', g, 'viscera');
   }
   // mesenterio + linfonodos yeyunales
@@ -737,15 +738,12 @@ function buildWall() {
   place('pa_v_subcutanea', vs, 'vaso');
   place('pa_nl_subiliaco', nl, 'linfa');
 
-  // referencias palpables
-  const rib = new THREE.Group(), cox = new THREE.Group();
+  // referencias palpables (la tuberosidad coxal es parte del coxal de la P11)
+  const rib = new THREE.Group();
   for (const side of [1, -1]) {
     rib.add(tube([...ribPath(13, side), ...cartilagePath(13, side).slice(1)], 0.0115, 'bone', { mat: { color: '#f3e6c0', emissive: '#3a2e10' }, radial: 10 }));
-    const ct = HINDLIMB.coxalTuber;
-    cox.add(blob(V(ct.x, ct.y, side * ct.z), [0.034, 0.028, 0.034], 'bone', { mat: { color: '#f3e6c0', emissive: '#3a2e10' }, noise: 0.05 }));
   }
   place('ultima_costilla', rib, 'hueso');
-  place('tuberosidad_coxal', cox, 'hueso');
 }
 
 // ═════════════════════════════════════════════════════════════

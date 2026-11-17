@@ -82,14 +82,43 @@ const EDGE = [[0, 0], [1, 1], [3, 0], [0, 1], [4, 0], [5, 1], [7, 0], [4, 1], [0
  * Poligoniza f (d<0 dentro) en la caja [min,max] con paso `step`.
  * Devuelve BufferGeometry indexada con normales del gradiente.
  */
-export function polygonize(f, min, max, step, { ao = 0.03 } = {}) {
+export function polygonize(f, min, max, step, { ao = 0.03, sparse = false } = {}) {
   const nx = Math.ceil((max[0] - min[0]) / step) + 1;
   const ny = Math.ceil((max[1] - min[1]) / step) + 1;
   const nz = Math.ceil((max[2] - min[2]) / step) + 1;
   const val = new Float32Array(nx * ny * nz);
   const id = (i, j, k) => i + nx * (j + ny * k);
-  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-    val[id(i, j, k)] = f(min[0] + i * step, min[1] + j * step, min[2] + k * step);
+  if (sparse) {
+    // Rejilla gruesa (cada B nodos): solo se evalúan a paso fino los bloques
+    // cercanos a la superficie (|f| < diagonal del bloque) y sus vecinos.
+    const B = 4, cx = Math.ceil((nx - 1) / B) + 1, cy = Math.ceil((ny - 1) / B) + 1, cz = Math.ceil((nz - 1) / B) + 1;
+    const cv = new Float32Array(cx * cy * cz), cid = (i, j, k) => i + cx * (j + cy * k);
+    for (let k = 0; k < cz; k++) for (let j = 0; j < cy; j++) for (let i = 0; i < cx; i++) {
+      cv[cid(i, j, k)] = f(min[0] + Math.min(i * B, nx - 1) * step, min[1] + Math.min(j * B, ny - 1) * step, min[2] + Math.min(k * B, nz - 1) * step);
+    }
+    const bx = cx - 1, by = cy - 1, bz = cz - 1, bid = (i, j, k) => i + bx * (j + by * k);
+    const near = new Uint8Array(bx * by * bz), lim = B * step * 1.7320508 * 1.5;
+    for (let k = 0; k < bz; k++) for (let j = 0; j < by; j++) for (let i = 0; i < bx; i++) {
+      let mn = Infinity, pos = false, neg = false;
+      for (let c = 0; c < 8; c++) { const v = cv[cid(i + (c & 1), j + ((c >> 1) & 1), k + ((c >> 2) & 1))]; mn = Math.min(mn, Math.abs(v)); if (v > 0) pos = true; else neg = true; }
+      if (mn < lim || (pos && neg)) near[bid(i, j, k)] = 1;
+    }
+    const dil = new Uint8Array(near.length);
+    for (let k = 0; k < bz; k++) for (let j = 0; j < by; j++) for (let i = 0; i < bx; i++) {
+      if (!near[bid(i, j, k)]) continue;
+      for (let dk = -1; dk <= 1; dk++) for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const a = i + di, b = j + dj, c = k + dk;
+        if (a >= 0 && b >= 0 && c >= 0 && a < bx && b < by && c < bz) dil[bid(a, b, c)] = 1;
+      }
+    }
+    for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const a = Math.min(bx - 1, Math.floor(i / B)), b = Math.min(by - 1, Math.floor(j / B)), c = Math.min(bz - 1, Math.floor(k / B));
+      val[id(i, j, k)] = dil[bid(a, b, c)] ? f(min[0] + i * step, min[1] + j * step, min[2] + k * step) : cv[cid(a, b, c)];
+    }
+  } else {
+    for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      val[id(i, j, k)] = f(min[0] + i * step, min[1] + j * step, min[2] + k * step);
+    }
   }
   const cache = new Int32Array(nx * ny * nz * 3).fill(-1);
   const pos = [], idx = [];

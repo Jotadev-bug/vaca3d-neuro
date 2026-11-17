@@ -1,4 +1,5 @@
 import { ABD_SECTIONS, ABD_ALIASES, ABD_INFO } from './abdomen.js';
+import { P11_SECTIONS, P11_ALIASES, P11_INFO } from './p11.js';
 // ─────────────────────────────────────────────────────────────
 // Catálogo de estudio · Práctica 9 (Rumiantes): cabeza, cuello, dorso y tórax
 // Fuente: NeuroApuntes.pdf (págs. 137-149). Números = numeración de las figuras.
@@ -905,6 +906,11 @@ export const INFO = {
 SECTIONS.push(...ABD_SECTIONS);
 Object.assign(ALIASES, ABD_ALIASES);
 Object.assign(INFO, ABD_INFO);
+
+// Práctica 11 · Pelvis, genitales, ubre y miembros
+SECTIONS.push(...P11_SECTIONS);
+Object.assign(ALIASES, P11_ALIASES);
+Object.assign(INFO, P11_INFO);
 
 /** Utilidad: lista plana de entradas para búsqueda/quiz */
 export function flatItems() {

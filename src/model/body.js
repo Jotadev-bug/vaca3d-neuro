@@ -145,13 +145,7 @@ function buildHoofSkin(hoof) {
   const coronet = blob(V(hoof.x - 0.004, 0.092, hoof.z), [0.030, 0.026, 0.028], 'skin',
     { noise: 0.03, detail: 3, mat: SKIN_MAT });
   both(null, coronet, 'piel');
-  // Pezuñas (dedos III y IV): estuche córneo que llega al suelo (y=0).
-  for (const dz of [0.026, -0.026]) {
-    const claw = blob(V(hoof.x - 0.005, 0.042, hoof.z + dz), [0.030, 0.052, 0.023], 'horn',
-      { noise: 0.025, detail: 3, rot: [0, 0, 0.1],
-        deform: (v) => { v.y -= Math.max(0, v.y) * 0.25; if (v.x > 0) v.x *= 1.15; } });
-    both(null, claw, 'piel');
-  }
+  // Las pezuñas (dedos III y IV, estuche córneo) las construye la P11 (p11/digit.js).
   // Espolones (dewclaws, dedos II y V): pegados a la cara caudal de la cuartilla,
   // algo elevados sobre el suelo. Se unen a la piel por un pequeño puente.
   for (const dz of [0.030, -0.030]) {
@@ -274,31 +268,7 @@ function buildLumbarSacrum() {
   }
   place('cresta_sacra_intermedia', interG, 'hueso');
 
-  // Coxales (contexto): ala del ilion → acetábulo → isquion, cada lado
-  for (const side of [1, -1]) {
-    const ilium = tube([
-      V(SACRAL[0].x + 0.05, SACRAL[0].y + 0.02, side * 0.06),
-      V(HINDLIMB.coxalTuber.x + 0.1, HINDLIMB.coxalTuber.y, side * 0.18),
-      V(HINDLIMB.coxalTuber.x, HINDLIMB.coxalTuber.y, side * HINDLIMB.coxalTuber.z),
-    ], (t) => lerp(0.035, 0.028, t), 'bone', { radial: 10, flat: 0.6 });
-    place(null, ilium, 'hueso');
-    const bodyPelvis = tube([
-      V(HINDLIMB.coxalTuber.x, HINDLIMB.coxalTuber.y, side * HINDLIMB.coxalTuber.z),
-      V(HINDLIMB.hip.x, HINDLIMB.hip.y + 0.02, side * HINDLIMB.hip.z),
-      V(HINDLIMB.ischialTuber.x, HINDLIMB.ischialTuber.y, side * HINDLIMB.ischialTuber.z),
-    ], (t) => lerp(0.03, 0.028, t), 'bone', { radial: 10 });
-    place(null, bodyPelvis, 'hueso');
-    // tubérculos palpables: coxal (hook) e isquial (pin) como contexto en relieve
-    place(null, blob(V(HINDLIMB.coxalTuber.x, HINDLIMB.coxalTuber.y, side * HINDLIMB.coxalTuber.z), [0.03, 0.025, 0.03], 'bone2', { noise: 0.04, detail: 3 }), 'hueso');
-    place(null, blob(V(HINDLIMB.ischialTuber.x, HINDLIMB.ischialTuber.y, side * HINDLIMB.ischialTuber.z), [0.03, 0.03, 0.028], 'bone2', { noise: 0.04, detail: 3 }), 'hueso');
-  }
-  // Tuberosidad sacra: borde dorsomedial del ala del ilion (ref), ambos lados
-  const tsG = new THREE.Group();
-  for (const side of [1, -1]) {
-    tsG.add(blob(V(HINDLIMB.sacralTuber.x, HINDLIMB.sacralTuber.y, side * HINDLIMB.sacralTuber.z),
-      [0.035, 0.028, 0.03], 'bone', { noise: 0.05, detail: 3 }));
-  }
-  place('tuberosidad_sacra', tsG, 'hueso');
+  // Coxales y tuberosidad sacra: los construye la P11 (p11/pelvis.js) con SDF detallada.
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -414,60 +384,14 @@ function longBone(a, b, r0, r1, re0, re1, kind = 'bone', seed = 1) {
 }
 function lerp3(a, b, t) { return a.clone().lerp(b, t); }
 
-function buildForelimb() {
-  for (const side of [1, -1]) {
-    const S = (p) => V(p.x, p.y, side * Math.abs(p.z));
-    const sc = SCAPULA;
-    // Escápula: lámina triangular ancha (plana) con borde engrosado + espina en relieve
-    const blade = tube([
-      S(sc.cranialAngle), S(V((sc.cranialAngle.x + sc.caudalAngle.x) / 2 + 0.02, (sc.cranialAngle.y + sc.caudalAngle.y) / 2 - 0.08, 0.215)),
-      S(sc.neck),
-    ], (t) => lerp(0.055, 0.02, t), 'bone', { radial: 16, flat: 0.28 });
-    place('escapula', blade, 'hueso');
-    // espina de la escápula (cresta longitudinal sobre la lámina)
-    place(null, tube([
-      V((sc.cranialAngle.x + sc.caudalAngle.x) / 2, (sc.cranialAngle.y + sc.caudalAngle.y) / 2, side * 0.235),
-      S(sc.neck),
-    ], (t) => lerp(0.010, 0.020, t), 'bone2', { radial: 8 }), 'hueso');
-    // cartílago escapular dorsal (borde superior)
-    place(null, tube([S(sc.cranialAngle), S(sc.caudalAngle)], (t) => lerp(0.016, 0.018, t), 'cartilage', { radial: 8, flat: 0.4 }), 'hueso');
-    // húmero (cabeza en la punta del hombro, cóndilo en el codo)
-    place(null, longBone(S(sc.shoulderPoint), S(FORELIMB.humerus[1]), 0.026, 0.022, 0.034, 0.030, 'bone', 3), 'hueso');
-    // olécranon (punta del codo): proceso que sobresale caudoproximal
-    place(null, blob(S(ELBOW).add(V(-0.03, 0.035, 0)), [0.022, 0.034, 0.02], 'bone2', { noise: 0.06, detail: 3, seed: 5 }), 'hueso');
-    // radio/ulna (vertical) con epífisis en codo y carpo
-    place(null, longBone(S(FORELIMB.radius[0]), S(FORELIMB.radius[1]), 0.020, 0.018, 0.028, 0.026, 'bone', 7), 'hueso');
-    // carpo (fila de huesecillos)
-    place(null, blob(S(FORELIMB.carpus), [0.028, 0.026, 0.026], 'bone2', { noise: 0.08, detail: 3, seed: 9 }), 'hueso');
-    // metacarpo (caña) con epífisis distal (nudillo/menudillo)
-    place(null, longBone(S(FORELIMB.metacarpus[0]), S(FORELIMB.metacarpus[1]), 0.018, 0.020, 0.024, 0.026, 'bone', 11), 'hueso');
-    // falanges hasta la pezuña
-    place(null, tube([S(FORELIMB.metacarpus[1]), S(FORELIMB.hoof)], (t) => lerp(0.022, 0.016, t), 'bone', { radial: 10 }), 'hueso');
-  }
-}
+// Los huesos del miembro torácico (escápula → falanges) los construye la P11
+// (p11/forelimb.js); aquí no queda nada que modelar.
+function buildForelimb() {}
 
 // ─────────────────────────────────────────────────────────────
-// 8 · MIEMBRO PELVIANO (fémur, rótula, tibia, tarso…) · contexto
+// 8 · MIEMBRO PELVIANO → p11/hindlimb.js
 // ─────────────────────────────────────────────────────────────
-function buildHindlimb() {
-  for (const side of [1, -1]) {
-    const S = (p) => V(p.x, p.y, side * Math.abs(p.z));
-    const L = HINDLIMB;
-    // fémur oblicuo craneoventral (cadera → babilla), con cabeza y cóndilos
-    place(null, longBone(S(L.femur[0]), S(L.femur[1]), 0.030, 0.026, 0.040, 0.034, 'bone', 13), 'hueso');
-    // rótula (sobre la tróclea femoral, craneal a la babilla)
-    place(null, blob(S(L.femur[1]).add(V(0.035, 0.015, 0)), [0.020, 0.026, 0.018], 'bone2', { noise: 0.04, detail: 3, seed: 2 }), 'hueso');
-    // tibia caudoventral (babilla → corvejón)
-    place(null, longBone(S(L.tibia[0]), S(L.tibia[1]), 0.026, 0.020, 0.032, 0.026, 'bone', 15), 'hueso');
-    // tarso (corvejón) con calcáneo (tuber calcis) sobresaliente caudoproximal
-    place(null, blob(S(L.hock), [0.024, 0.032, 0.022], 'bone2', { noise: 0.06, detail: 3, seed: 17 }), 'hueso');
-    place(null, blob(S(L.hock).add(V(-0.045, 0.045, 0)), [0.016, 0.028, 0.016], 'bone2', { noise: 0.05, detail: 3, seed: 18 }), 'hueso');
-    // metatarso (caña) vertical con menudillo distal
-    place(null, longBone(S(L.metatarsus[0]), S(L.metatarsus[1]), 0.018, 0.020, 0.024, 0.026, 'bone', 19), 'hueso');
-    // falanges hasta la pezuña
-    place(null, tube([S(L.metatarsus[1]), S(L.hoof)], (t) => lerp(0.022, 0.016, t), 'bone', { radial: 10 }), 'hueso');
-  }
-}
+function buildHindlimb() {}
 
 // ─────────────────────────────────────────────────────────────
 // 9 · MARCADORES PALPABLES (ambos lados)
