@@ -13,6 +13,9 @@ import * as neck from './model/neck.js';
 import * as thorax from './model/thorax.js';
 import * as body from './model/body.js';
 import * as abdomen from './model/abdomen.js';
+import * as p11 from './model/p11.js';
+import * as miembros from './model/miembros.js';
+import * as toro from './model/toro.js';
 import { THORACIC, LUMBAR } from './frame.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,7 +23,7 @@ const params = new URLSearchParams(location.search);
 const SHOT = params.has('shot');
 
 // ── construir modelo ──
-const MODULES = { head, neck, thorax, body, abdomen };
+const MODULES = { head, neck, thorax, body, abdomen, p11, miembros, toro };
 const only = params.get('solo')?.split(',');
 for (const [name, mod] of Object.entries(MODULES)) {
   if (only && !only.includes(name)) continue;
@@ -114,6 +117,55 @@ const P9_PROJ = ['proy_', 'lim_', 'aus_', 'area_', 'linea_receso', 'epidural'];
 for (const v of Object.values(VIEWS)) if (v.p === 10) v.hide = [...(v.hide || []), ...P9_PROJ];
 // las vistas laterales del abdomen no necesitan los pulmones tapando retículo, hígado y bazo
 for (const id of ['abd_izq', 'abd_dcho', 'abd_omentos', 'paramediano']) VIEWS[id].hide.push('pulmon_', 'borde_basal_pulmon');
+// ── Práctica 11 · pelvis, genitales, ubre y miembros ──
+// En la P9/P10 no se muestran las partes blandas de los miembros ni el toro (módulos 'miembros' y 'toro').
+const BASE_OWNERS = ['head', 'neck', 'thorax', 'body', 'abdomen', 'p11'];
+for (const v of Object.values(VIEWS)) v.owners ??= BASE_OWNERS;
+const FEM = ['fem_', 'vulva_', 'ubre_', 'perine', 'a_uterina', 'nnll_mamarios', 'a_pudenda_ext', 'v_pudenda_ext', 'exc_'];
+const P11_HIDE = ['reg_', ...P9_PROJ];
+const ALL_L = Object.keys(LAYERS);
+const keepL = (...l) => ALL_L.filter((x) => !l.includes(x));     // hideLayers = todas menos estas
+const p11v = (o) => ({ p: 11, skin: 0, ...o, hide: [...P11_HIDE, ...(o.hide || [])] });
+const LIMB_ON = keepL('hueso', 'musculo', 'vaso', 'nervio', 'linfa');
+Object.assign(VIEWS, {
+  // pelvis y vísceras pélvicas (vaca)
+  pelvis: p11v({ label: 'Pelvis', target: [-1.6, 1.06, 0], dir: [0.05, 0.12, 1], span: [0.78, 0.55], owners: ['p11', 'body'], hideLayers: keepL('hueso', 'proyeccion', 'musculo'), hide: ['toro_', 'lineas_art', ...FEM, 'ano'] }),
+  pelvis_medidas: p11v({ label: 'Medidas pélvicas', target: [-1.62, 1.04, 0], dir: [0, 0.05, 1], span: [0.7, 0.45], owners: ['p11', 'body'], hideLayers: keepL('hueso', 'proyeccion'), clip: 'sag', clipPos: 0.004, hide: ['toro_', ...FEM, 'ano', 'lineas_art'] }),
+  pelvis_craneal: p11v({ label: 'Abertura craneal', target: [-1.56, 1.04, 0], dir: [1, 0.3, 0.12], span: [0.5, 0.45], owners: ['p11', 'body'], hideLayers: keepL('hueso', 'proyeccion'), hide: ['toro_', ...FEM, 'ano', 'lineas_art', 'femur', 'trocanter', 'rotula'] }),
+  perine: p11v({ label: 'Periné', target: [-1.93, 1.0, 0], dir: [-1, 0.15, 0.35], span: [0.5, 0.42], owners: ['p11', 'body'], hideLayers: keepL('hueso', 'proyeccion', 'piel'), hide: ['toro_', 'pel_', 'exc_'], skin: 0.5 }),
+  visceras_pelv: p11v({ label: 'Vísceras pélvicas', target: [-1.63, 1.0, 0.02], dir: [0.1, 0.3, 1], span: [0.72, 0.42], owners: ['p11', 'abdomen'], hideLayers: keepL('hueso', 'viscera', 'omento', 'musculo', 'proyeccion', 'glandula'), hide: ['lineas_art', 'toro_', 'ubre_', 'pel_diam', 'pel_eje', 'pel_incl', 'pel_abertura', 'pel_linea', 'lig_sacro', 'rumen', 'reticulo', 'omaso', 'abomaso', 'om_', 'pa_', 'yeyuno', 'ileon', 'colon', 'ciego', 'duodeno', 'mesenterio', 'nnll_yey', 'higado', 'rinon', 'bazo', 'pancreas'] }),
+  genitales: p11v({ label: 'Genitales ♀', target: [-1.6, 0.99, 0.02], dir: [0.05, 0.75, 0.6], span: [0.62, 0.36], owners: ['p11'], hideLayers: keepL('viscera', 'omento', 'vaso', 'proyeccion', 'linfa'), hide: ['toro_', 'rec_', 'ubre_', 'pel_', 'perine', 'ano', 'exc_', 'lineas_art', 'a_pudenda', 'v_pudenda', 'nnll_mamarios', 'nnll_inguinales'] }),
+  genitales_int: p11v({ label: 'Interior ♀', target: [-1.68, 0.985, 0], dir: [0, 0.06, 1], span: [0.6, 0.28], owners: ['p11'], hideLayers: keepL('viscera', 'glandula', 'proyeccion', 'omento'), clip: 'sag', clipPos: 0.0015, hide: ['lineas_art', 'toro_', 'ubre_', 'pel_', 'perine', 'exc_', 'fem_mesometrio'] }),
+  ovario: p11v({ label: 'Ovario', target: [-1.478, 0.968, 0.137], dir: [0.35, 0.5, 1], span: [0.13, 0.1], owners: ['p11'], hideLayers: keepL('viscera', 'omento', 'vaso'), hide: ['lineas_art', 'toro_', 'rec_', 'ubre_', 'fem_mesometrio'] }),
+  exploracion: p11v({ label: 'Exploración rectal', target: [-1.4, 1.0, 0], dir: [-0.2, 1, 0.1], span: [0.95, 0.6], owners: ['p11', 'abdomen'], hideLayers: keepL('viscera', 'vaso', 'linfa', 'hueso', 'proyeccion'), hide: ['lineas_art', 'toro_', 'rec_', 'om_', 'pa_', 'pel_diam', 'pel_eje', 'pel_incl', 'pel_abertura', 'pel_linea', 'lig_sacro', 'ubre_', 'exc_', 'higado', 'vesicula', 'femur', 'trocanter', 'rotula', 'tib', 'v_cava', 'v_porta', 'recto'] }),
+  ubre: p11v({ label: 'Ubre', target: [-1.52, 0.44, 0.04], dir: [0.25, 0.12, 1], span: [0.75, 0.6], owners: ['p11', 'body', 'abdomen'], hideLayers: keepL('glandula', 'vaso', 'linfa', 'musculo', 'piel', 'proyeccion'), hide: ['toro_', 'pel_', 'perine', 'ano', 'vulva', 'pa_obl', 'pa_trans', 'pa_recto', 'pa_vaina', 'pa_cutaneo', 'reg_'], skin: 0.12 }),
+  ubre_corte: p11v({ label: 'Corte ubre', target: [-1.52, 0.42, 0.1], dir: [0, 0.05, 1], span: [0.62, 0.5], owners: ['p11'], hideLayers: keepL('glandula', 'vaso', 'linfa', 'musculo', 'proyeccion'), clip: 'sag', clipPos: 0.1, hide: ['toro_', 'pel_', 'm_', 'lig_', 'exc_', 'fem_', 'vulva', 'perine', 'ano', 'rec_', 'nnll_iliacos', 'a_iliaca', 'a_uterina', 'lineas_art'] }),
+  // toro
+  toro: p11v({ label: 'Toro', target: [-1.36, 0.72, 0], dir: [0, 0.08, 1], span: [1.15, 0.62], owners: ['toro', 'p11'], hideLayers: keepL('hueso', 'piel', 'viscera', 'glandula', 'vaso', 'musculo', 'omento', 'linfa'), hide: [...FEM, 'ano', 'pel_diam', 'pel_eje', 'pel_incl', 'pel_abertura', 'pel_linea', 'pel_agujero', 'rec_', 'lineas_art', 'esc_', 'hum', 'radio', 'rad_', 'cub', 'olecranon', 'carpo', 'metacarpo', 'mc_', 'esp_inter', 'sesamoideo', 'femur', 'trocanter', 'rotula', 'lig_rot', 'art_', 'tib', 'cabeza_perone', 'calcaneo', 'talo', 'centrocuartal', 'tarsiano', 'metatarso', 'sesamoideo', 'pez_', 'falange', 'fd_', 'ligg_', 'pie_'] }),
+  toro_escroto: p11v({ label: 'Testículo', target: [-1.47, 0.5, 0.05], dir: [0.3, 0.12, 1], span: [0.32, 0.42], owners: ['toro'], hideLayers: [], hide: ['toro_escroto', 'toro_rafe', 'toro_pezones', 'toro_fascia_esp_ext'] }),
+  toro_pelvico: p11v({ label: 'Genitales pélvicos ♂', target: [-1.62, 0.96, 0], dir: [-0.05, 1, 0.12], span: [0.5, 0.3], owners: ['toro', 'p11'], hideLayers: keepL('viscera', 'glandula', 'musculo', 'omento', 'hueso'), hide: [...FEM, 'rec_', 'm_', 'lig_', 'pel_ala', 'tuberosidad', 'pel_cuerpo', 'pel_sacro', 'femur', 'trocanter', 'art_'] }),
+  toro_pene: p11v({ label: 'Pene', target: [-1.3, 0.69, 0], dir: [0, 0.05, 1], span: [1.25, 0.5], owners: ['toro'], hideLayers: keepL('viscera', 'musculo', 'piel', 'proyeccion', 'glandula'), hide: ['toro_escroto', 'toro_fascia', 'toro_tunica', 'toro_bolsa', 'toro_rafe_esc', 'toro_pezones'] }),
+  // miembro torácico
+  mt_esqueleto: p11v({ label: 'Esqueleto torácico', target: [0.2, 0.74, 0.2], dir: [0.15, 0.06, 1], span: [0.85, 1.5], owners: ['p11', 'body'], hideLayers: keepL('hueso') }),
+  mt_hombro: p11v({ label: 'Hombro y brazo', target: [0.2, 0.98, 0.2], dir: [0.1, 0.12, 1], span: [1.0, 0.85], owners: ['p11', 'miembros', 'neck', 'body'], hideLayers: LIMB_ON }),
+  mt_medial: p11v({ label: 'Brazo medial', target: [0.22, 0.95, 0.19], dir: [0.1, 0.08, -1], span: [0.85, 0.8], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, clip: 'sag', clipPos: 0.13, flip: true }),
+  mt_antebrazo: p11v({ label: 'Antebrazo', target: [0.13, 0.55, 0.21], dir: [0.12, 0.05, 1], span: [0.36, 0.55], owners: ['p11', 'miembros'], hideLayers: LIMB_ON }),
+  mt_antebrazo_med: p11v({ label: 'Antebrazo medial', target: [0.13, 0.55, 0.2], dir: [0.12, 0.05, -1], span: [0.36, 0.55], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, clip: 'sag', clipPos: 0.14, flip: true }),
+  mt_carpo: p11v({ label: 'Carpo', target: [0.15, 0.33, 0.2], dir: [0.6, 0.15, 1], span: [0.17, 0.13], owners: ['p11'], hideLayers: keepL('hueso', 'proyeccion') }),
+  mt_dedos: p11v({ label: 'Mano', target: [0.17, 0.15, 0.19], dir: [0.4, 0.12, 1], span: [0.24, 0.34], owners: ['p11', 'miembros'], hideLayers: keepL('hueso', 'musculo', 'vaso') }),
+  pezuna: p11v({ label: 'Pezuña', target: [0.19, 0.045, 0.19], dir: [0.7, 0.3, 0.8], span: [0.2, 0.15], owners: ['p11'], hideLayers: keepL('piel', 'hueso') }),
+  pezuna_suela: p11v({ label: 'Suela', target: [0.19, 0.0, 0.19], dir: [0.15, -1, 0.2], span: [0.2, 0.17], owners: ['p11'], hideLayers: keepL('piel') }),
+  // miembro pelviano
+  mp_esqueleto: p11v({ label: 'Esqueleto pelviano', target: [-1.6, 0.68, 0.2], dir: [0.1, 0.06, 1], span: [0.8, 1.42], owners: ['p11', 'body'], hideLayers: keepL('hueso'), hide: ['toro_'] }),
+  mp_grupa: p11v({ label: 'Grupa y muslo', target: [-1.6, 0.92, 0.2], dir: [0, 0.1, 1], span: [0.85, 0.85], owners: ['p11', 'miembros', 'body'], hideLayers: LIMB_ON, hide: ['toro_', 'ubre_', 'lig_sacro'] }),
+  mp_profundo: p11v({ label: 'Muslo profundo', target: [-1.62, 0.9, 0.2], dir: [0, 0.1, 1], span: [0.8, 0.8], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, hide: ['toro_', 'ubre_', 'lig_sacro', 'm_gluteobiceps', 'm_tensor', 'm_gluteo_medio', 'm_semitendinoso'] }),
+  mp_medial: p11v({ label: 'Muslo medial', target: [-1.58, 0.85, 0.15], dir: [0.05, 0.05, -1], span: [0.75, 0.75], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, clip: 'sag', clipPos: 0.11, flip: true, hide: ['toro_', 'ubre_', 'lig_sacro'] }),
+  mp_pierna: p11v({ label: 'Pierna', target: [-1.56, 0.48, 0.2], dir: [0, 0.05, 1], span: [0.42, 0.55], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, hide: ['toro_', 'ubre_', 'lig_sacro'] }),
+  mp_pierna_med: p11v({ label: 'Pierna medial', target: [-1.56, 0.48, 0.18], dir: [0.05, 0.05, -1], span: [0.42, 0.55], owners: ['p11', 'miembros'], hideLayers: LIMB_ON, clip: 'sag', clipPos: 0.13, flip: true, hide: ['toro_', 'ubre_', 'lig_sacro'] }),
+  mp_tarso: p11v({ label: 'Tarso', target: [-1.64, 0.33, 0.18], dir: [0.4, 0.1, 1], span: [0.16, 0.17], owners: ['p11'], hideLayers: keepL('hueso') }),
+});
+// las vistas que no son del toro ocultan sus estructuras
+for (const [id, v] of Object.entries(VIEWS)) if (!id.startsWith('toro')) v.hide = [...(v.hide || []), 'toro_'];
 const viewPose = (v) => {
   const t = new THREE.Vector3(...v.target);
   const p = t.clone().add(new THREE.Vector3(...v.dir).normalize().multiplyScalar(fitDistance(v.span)));
@@ -122,9 +174,9 @@ const viewPose = (v) => {
 const viewsEl = $('views');
 // selector de práctica: muestra los botones de vistas de la 9 o de la 10
 const ptab = el('div', 'ptab');
-ptab.innerHTML = '<button data-p="9">P9</button><button data-p="10">P10</button>';
+ptab.innerHTML = '<button data-p="9">P9</button><button data-p="10">P10</button><button data-p="11">P11</button>';
 viewsEl.appendChild(ptab);
-let practice = 10;
+let practice = 11;
 function showPractice(p) {
   practice = p;
   ptab.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.p === p));
